@@ -1,7 +1,19 @@
 /**
  * Created by dev on 1/1/14.
+ *
+ * Add in Event handling via Mediator.
+ * Be able to run "life."
+ * Add in Packet to Cell.
+ * Add in renderers for Packet and Cell.
+ * Remove use of indices as indicators.
+ * Be able to add a column, row to table--top, bottom, left, right.
  */
-
+/**
+ * Don't use index arithmetic for determining location; use column & row
+ * coordinates instead.
+ * When a new column or row is added, each of its cells should communicate to
+ * its neighbors that it's been added.
+ */
 var Collective = new function() {
   var COLUMN_COUNT = 5;
   var WRAPS = false;  // Is the world round or flat?
@@ -83,139 +95,88 @@ var Collective = new function() {
     isWrapping: function() { return WRAPS; }
   }
 }
+var CellNeighborFinder = function(cell) {
+  /**
+   * @todo Add functionality for if the world is round.
+   */
+
+  var col = cell.get('column'), row = cell.get('row');
+  var index = cell.get('index');
+
+  var possible_neighbors = {
+    "north":[
+      {"cell_coordinates": {"column":col-1, "row":row-1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i - Collective.getColumnCount() - 1;}},
+      {"cell_coordinates": {"column":col, "row":row-1}, "relationships":["neighbor", "rank", "column"], "index":null, "determine": function(i) {return i - Collective.getColumnCount();}},
+      {"cell_coordinates": {"column":col+1, "row":row-1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i - Collective.getColumnCount() + 1;}}],
+    "south":[
+      {"cell_coordinates": {"column":col-1, "row":row+1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i + Collective.getColumnCount() - 1;}},
+      {"cell_coordinates": {"column":col, "row":row+1}, "relationships":["neighbor", "rank", "column"], "index":null, "determine": function(i) {return i + Collective.getColumnCount();}},
+      {"cell_coordinates": {"column":col+1, "row":row+1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i + Collective.getColumnCount() + 1;}}],
+    "east":[
+      {"cell_coordinates": {"column":col+1, "row":row-1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i + 1 - Collective.getColumnCount();}},
+      {"cell_coordinates": {"column":col+1, "row":row}, "relationships":["neighbor", "rank", "row"], "index":null, "determine": function(i) {return i + 1;}},
+      {"cell_coordinates": {"column":col+1, "row":row+1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i + 1 + Collective.getColumnCount();}}],
+    "west":[
+      {"cell_coordinates": {"column":col-1, "row":row-1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i - 1 - Collective.getColumnCount();}},
+      {"cell_coordinates": {"column":col-1, "row":row}, "relationships":["neighbor", "rank", "row"], "index":null, "determine": function(i) {return i - 1;}},
+      {"cell_coordinates": {"column":col-1, "row":row+1}, "relationships":["neighbor"], "index":null, "determine": function(i) {return i - 1 + Collective.getColumnCount();}}]
+  };
+
+  return {
+    find: function(boundary) {
+      if (!possible_neighbors.hasOwnProperty(boundary))
+        return [];
+      var a = this.filter(possible_neighbors[boundary]);
+      _.each(a, this.determineIndex);
+      return a;
+    },
+    filter: function(p) {
+      var a = [];
+      _.each(p, function(v) {
+          if (Collective.areCellCoordinatesValid(v.cell_coordinates)) {
+            a.push(v);
+          }
+      });
+      return a;
+    },
+    determineIndex: function(v) {
+      v.index = v.determine(index);
+    }
+  }
+}
 var CellNeighbors = function(cell) {
   var boundaries = (function buildBoundaries() {
     var n = [], e = [], s = [], w = [];
-    var index = cell.get('index');
-    var tmp;
+    var a = [], o = null;
+
+    var finder = new CellNeighborFinder(cell);
+    var apply = function(v) {
+      console.log(v);
+      o = Collective.getCellByCellCoordinates(v.cell_coordinates);
+      if (o == null) {
+        throw Error('Expected a cell, but got null.');
+      } else {
+        v.cell = o;
+      }
+      return {"cell":o, "cell_coordinates": v.cell_coordinates, "relationships": v.relationships};
+    };
+
+    n = _.collect(finder.find('north'), apply);
+    s = _.collect(finder.find('south'), apply);
+    e = _.collect(finder.find('east'), apply);
+    w = _.collect(finder.find('west'), apply);
 
     /**
-     * Add functionality for if the world is round.
-     */
-    var col = cell.get('column');
-    var row = cell.get('row');
-
-    /**
-     * {"neighbor":<o>, "relationships":["neighbor", "rank", "column"]}
-     *
      * if the state changed, broadcast a message to all neighbors
      */
-
-    var tst, o;
-    /**
-     * A better, faster way would be to determine which are valid, and then
-     * determine the indices based upon that.
-     *
-     * If cell coordinates are valid, execute the index arithmetic for that type.
-     */
-    tst = [
-      {"column":col-1, "row":row-1},
-      {"column":col, "row":row-1},
-      {"column":col+1, "row":row-1}];
-    _.each(tst, function(v) {
-      if (Collective.areCellCoordinatesValid(v)) {
-        o = Collective.getCellByCellCoordinates(v);
-        if (o == null) {
-          throw Error('Expected a cell, but got null.');
-        }
-        n.push(o.get('index'));
-      }
-    });
-    tst = [
-      {"column":col-1, "row":row+1},
-      {"column":col, "row":row+1},
-      {"column":col+1, "row":row+1}];
-    _.each(tst, function(v) {
-      if (Collective.areCellCoordinatesValid(v)) {
-        o = Collective.getCellByCellCoordinates(v);
-        if (o == null) {
-          throw Error('Expected a cell, but got null.');
-        }
-        s.push(o.get('index'));
-      }
-    });
-    tst = [
-      {"column":col+1, "row":row-1},
-      {"column":col+1, "row":row},
-      {"column":col+1, "row":row+1}];
-    _.each(tst, function(v) {
-      if (Collective.areCellCoordinatesValid(v)) {
-        o = Collective.getCellByCellCoordinates(v);
-        if (o == null) {
-          throw Error('Expected a cell, but got null.');
-        }
-        e.push(o.get('index'));
-      }
-    });
-    tst = [
-      {"column":col-1, "row":row-1},
-      {"column":col-1, "row":row},
-      {"column":col-1, "row":row+1}];
-    _.each(tst, function(v) {
-      if (Collective.areCellCoordinatesValid(v)) {
-        o = Collective.getCellByCellCoordinates(v);
-        if (o == null) {
-          throw Error('Expected a cell, but got null.');
-        }
-        w.push(o.get('index'));
-      }
-    });
-
-    /*
-    if (cell.getRow() > 1) {
-      if (Collective.isCellIndexValid(tmp = index - Collective.getColumnCount() - 1)) {
-        n.push(tmp);
-      }
-      if (Collective.isCellIndexValid(tmp = index - Collective.getColumnCount())) {
-        n.push(tmp);
-      }
-      if (Collective.isCellIndexValid(tmp = index - Collective.getColumnCount() + 1)) {
-        n.push(tmp);
-      }
-    }
-    if (cell.getRow() < Collective.getRowCount()) {
-      if (Collective.isCellIndexValid(tmp = index + Collective.getColumnCount() - 1)) {
-        s.push(tmp);
-      }
-      console.log(s);
-      if (Collective.isCellIndexValid(tmp = index + Collective.getColumnCount())) {
-        s.push(tmp);
-      }
-      console.log(s);
-      if (Collective.isCellIndexValid(tmp = index + Collective.getColumnCount() + 1)) {
-        s.push(tmp);
-      }
-      console.log(s);
-    }
-    if (cell.getColumn() < Collective.getColumnCount()) {
-      if (Collective.isCellIndexValid(tmp = index + 1 - Collective.getColumnCount())) {
-        e.push(tmp);
-      }
-      if (Collective.isCellIndexValid(tmp = index + 1)) {
-        e.push(tmp);
-      }
-      if (Collective.isCellIndexValid(tmp = index + 1 + Collective.getColumnCount())) {
-        e.push(tmp);
-      }
-    }
-    if (cell.getColumn() > 1) {
-      if (Collective.isCellIndexValid(tmp = index - 1 - Collective.getColumnCount())) {
-        w.push(tmp);
-      }
-      if (Collective.isCellIndexValid(tmp = index - 1)) {
-        w.push(tmp);
-      }
-      if (Collective.isCellIndexValid(tmp = index - 1 + Collective.getColumnCount())) {
-        w.push(tmp);
-      }
-    }
-    */
     console.log('n');
     console.log(n);
     console.log('s');
     console.log(s);
     console.log('e');
     console.log(e);
+    console.log('w');
+    console.log(w);
     return {
       'north': n,
       'east': e,
@@ -258,7 +219,7 @@ var Cell = function(v, i) {
     return index % Collective.getColumnCount() + 1;
   })();
   var row = (function() {
-    return Math.ceil((index + 1) / 5);
+    return Math.ceil((index + 1) / Collective.getColumnCount());
   })();
   var neighbors = null;
   return {
@@ -287,11 +248,18 @@ var Cell = function(v, i) {
     },
     isAlive: function() {
       return value > 0;
+    },
+    toggleAlive: function() {
+      value = this.isAlive() ? 0 : 1;
+    },
+    render: function() {
+      $('td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').text(this.get('index') + (this.isAlive() ? '*' : ''));
     }
   }
 }
-var a = [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0];
-Collective.initialize(a);
+var data = [];
+_(50).times(function(n) {data.push(0)});
+Collective.initialize(data);
 console.log(Collective.get('cells').length);
 
 var createTable = function() {
@@ -303,7 +271,7 @@ var createTable = function() {
   elem = $('#output thead');
   t = '';
   for (var i=0; i < num_cols; i++) {
-    t += '<th class="col" data="' + (i+1) + '"></td>';
+    t += '<th class="col" data="' + (i+1) + '"></th>';
   }
   elem.append(t);
 
@@ -311,7 +279,7 @@ var createTable = function() {
   for (var i=0; i < num_rows; i++) {
     t = '';
     for (var j=0; j < num_cols; j++) {
-      t += '<td class="cell" data="' + ((i*num_cols)+j) + '">&nbsp;</td>';
+      t += '<td class="cell" data-cell_coordinates="{&quot;column&quot;:' + (j+1) + ', &quot;row&quot;:' + (i+1) + '}">&nbsp;</td>';
     }
     elem.append('<tr class="row" data="' + (i+1) + '">' + t + '</tr>')
   }
@@ -324,17 +292,19 @@ var appendEvents = function() {
     $('#output td').removeClass('neighbor');
 
     var td = $(this);
-    var data = td.attr('data');
-    var cell = Collective.getCellByIndex(parseInt(data));
+    var coords = $.parseJSON(td.attr('data-cell_coordinates'));
+    var cell = Collective.getCellByCellCoordinates(coords);
     var col = cell.get('column');
     var row = cell.get('row');
 
+    cell.toggleAlive();
+    cell.render();
+
     var neighbors = cell.getNeighbors().getUnique();
     console.log('neighbors');
-    console.log(neighbors)
+    console.log(neighbors);
     _.each(neighbors, function(v) {
-      var o = Collective.getCellByIndex(v);
-      $('#output td[data="' + o.get('index') + '"]').addClass('neighbor');
+      $('#output td[data="' + v.cell.get('index') + '"]').addClass('neighbor');
     });
     var col_cells = Collective.getCellsByColumn(col);
     _.each(col_cells, function(o) {
@@ -348,16 +318,16 @@ var appendEvents = function() {
     td.removeClass('neighbor').removeClass('rank').addClass('active');
 
     var t = '';
-    t += 'classes:   ' + td.attr('class') + '\n';
-    t += 'data:      ' + data + '\n';
+    t += 'classes:     ' + td.attr('class') + '\n';
+    t += 'data_coords: ' + JSON.stringify(coords) + '\n';
 
     if (cell != null) {
-      t += 'index:     ' + cell.get('index') + '\n';
-      t += 'value:     ' + cell.get('value') + '\n';
-      t += 'alive:     ' + cell.get('alive') + '\n';
-      t += 'column:    ' + col + '\n';
-      t += 'row:       ' + row + '\n';
-      t += 'neighbors: ' + cell.getNeighbors().getUnique(true) + '\n';
+      t += 'index:       ' + cell.get('index') + '\n';
+      t += 'value:       ' + cell.get('value') + '\n';
+      t += 'alive:       ' + cell.get('alive') + '\n';
+      t += 'column:      ' + col + '\n';
+      t += 'row:         ' + row + '\n';
+      t += 'neighbors:   ' + JSON.stringify(cell.getNeighbors().getUnique(true)) + '\n';
     }
     $('#details').text(t);
   });
@@ -365,36 +335,9 @@ var appendEvents = function() {
 
 var populateTable = function() {
   _.each(Collective.get('cells'), function(o) {
-    $('td[data="' + o.get('index') + '"]').text(o.get('index'));
+    o.render();
   });
 }
-
-var formatOutput = function(nodes) {
-  var COLUMNS = 5;
-  var s = '- - - - -\n';
-  var len = nodes.length;
-  var i = 0;
-
-  while (i < len) {
-    for (var col = 1; col <= COLUMNS; col++) {
-      s += nodes[i].draw();
-//      console.log(i + '=>' + a[i] + ' ' + col);
-//      s += a[i] + '|';
-      i++;
-
-      if (col == COLUMNS) {
-        s += '\n';
-      }
-      if (i >= len) break;
-    }
-  }
-  s += '- - - - -\n';
-
-  return s;
-}
-
-//var elem = $('#output');
-//elem.text(formatOutput(Collective.get('cells')));
 
 createTable();
 appendEvents();

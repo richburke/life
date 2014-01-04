@@ -26,7 +26,7 @@
       <file leaf-file-name="index.html" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/index.html">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="17" column="34" selection-start="310" selection-end="310" vertical-scroll-proportion="-2.25" vertical-offset="353" max-vertical-offset="1900">
+            <state line="67" column="30" selection-start="1086" selection-end="1086" vertical-scroll-proportion="-52.34375" vertical-offset="0" max-vertical-offset="2025">
               <folding />
             </state>
           </provider>
@@ -35,10 +35,8 @@
       <file leaf-file-name="main.js" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/assets/scripts/main.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="100" column="65" selection-start="2828" selection-end="2828" vertical-scroll-proportion="3.665109" vertical-offset="97" max-vertical-offset="10125">
-              <folding>
-                <element signature="e#0#36#0" expanded="false" />
-              </folding>
+            <state line="2" column="2" selection-start="35" selection-end="35" vertical-scroll-proportion="0.08347245" vertical-offset="0" max-vertical-offset="8750">
+              <folding />
             </state>
           </provider>
         </entry>
@@ -276,17 +274,15 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/index.html">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="17" column="34" selection-start="310" selection-end="310" vertical-scroll-proportion="-2.25" vertical-offset="353" max-vertical-offset="1900">
+        <state line="67" column="30" selection-start="1086" selection-end="1086" vertical-scroll-proportion="-52.34375" vertical-offset="0" max-vertical-offset="2025">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/assets/scripts/main.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="100" column="65" selection-start="2828" selection-end="2828" vertical-scroll-proportion="3.665109" vertical-offset="97" max-vertical-offset="10125">
-          <folding>
-            <element signature="e#0#36#0" expanded="false" />
-          </folding>
+        <state line="2" column="2" selection-start="35" selection-end="35" vertical-scroll-proportion="0.08347245" vertical-offset="0" max-vertical-offset="8750">
+          <folding />
         </state>
       </provider>
     </entry>
