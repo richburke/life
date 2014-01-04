@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+
+  <style type="text/css">
+    table {
+      border: 1px solid black;
+      table-layout: fixed;
+      width: 200px;
+    }
+    th, td {
+      border: 1px solid black;
+      overflow: hidden;
+      width: 40px;
+    }
+    .cell {
+      background-color: lightcyan;
+    }
+    .active {
+      background-color: darkblue;
+      color: white;
+    }
+    .rank {
+      background-color: blue;
+    }
+    .neighbor {
+      background-color: lightblue;
+    }
+  </style>
+</head>
+<body>
+
+<!--
+* create objects to reflect "life."
+* create rules to reflect "evolution."
+* have go & stop commands
+* able to display the results in an array
+* link up with bacon.js
+
+* create canvas, per processing.js
+
+
+* increase canvas dynamically
+* draw a grid
+* zoom out on grid
+* zoom around locations of canvas as objects are created
+*
+
+-->
+<!--
+<canvas>
+</canvas>
+-->
+
+<table id="output">
+  <tbody></tbody>
+</table>
+
+<h5>Details</h5>
+<code>
+  <pre id="details"></pre>
+</code>
+
+<script src="assets/scripts/ext/node_modules/jquery/dist/jquery.min.js" type="text/javascript"></script>
+<script src="assets/scripts/ext/node_modules/bacon/index.js" type="text/javascript"></script>
+<script src="assets/scripts/ext/node_modules/underscore/underscore-min.js" type="text/javascript"></script>
+<script src="assets/scripts/ext/processing.js" type="text/javascript"></script>
+<script src="assets/scripts/main.js" type="text/javascript"></script>
+</body>
+</html>
