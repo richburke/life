@@ -3,6 +3,9 @@
  *
  * Add in Event handling via Mediator.
  * Be able to run "life."
+ * Create as a Self-Invoking Function.
+ * Use 'use strict'.
+ * Add unattached functions to Collective or where appropriate.
  * Add in Packet to Cell.
  * Add in renderers for Packet and Cell.
  * Remove use of indices as indicators.
@@ -260,7 +263,6 @@ var Cell = function(v, i) {
 var data = [];
 _(50).times(function(n) {data.push(0)});
 Collective.initialize(data);
-console.log(Collective.get('cells').length);
 
 var createTable = function() {
   var num_cols = Collective.getColumnCount();
@@ -304,8 +306,9 @@ var appendEvents = function() {
     console.log('neighbors');
     console.log(neighbors);
     _.each(neighbors, function(v) {
-      $('#output td[data="' + v.cell.get('index') + '"]').addClass('neighbor');
+      $('#output td[data-cell_coordinates="{\"column\":' + v.cell.get('column') + ', \"row\":' + v.cell.get('row') + '}"]').addClass('neighbor');
     });
+    /*
     var col_cells = Collective.getCellsByColumn(col);
     _.each(col_cells, function(o) {
       $('#output td[data="' + o.get('index') + '"]').removeClass('neighbor').addClass('rank');
@@ -314,6 +317,7 @@ var appendEvents = function() {
     _.each(row_cells, function(o) {
       $('#output td[data="' + o.get('index') + '"]').removeClass('neighbor').addClass('rank');
     });
+    */
     // The class "rank" was added by above.
     td.removeClass('neighbor').removeClass('rank').addClass('active');
 
