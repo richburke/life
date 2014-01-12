@@ -1,6 +1,16 @@
 /**
  * Created by dev on 1/1/14.
  *
+ * Research bacon js
+ *
+ * _Here's the problem: I can't just fire events from the cell itself, because
+ *  that would trigger a back and forth on a set of cells.   None of the other
+ *  cells would get any action.  Instead they need to go into a queue.
+ * _But when and how do events get pulled from that queue?
+ * _A cool thing would be able to mimic parallelism.  Not sure if that's possible
+ *  because at some level there is always one thing that needs to fire a timer,
+ *  and then for only one thing at a time.
+ *
  * Be able to run "life."
  * Use 'use strict'.
  * Add unattached functions to Collective or where appropriate.
@@ -126,6 +136,14 @@ var App;
             }
           });
         });
+
+        /*
+        jQuery(document).asEventStream('cell_state_change')
+          .onValue(function(event) {
+            console.log('STATE CHANGE');
+            console.dir(event.target);
+        });
+        */
       },
       getCells: function() {return cells;},
       get: function(p) {
@@ -271,17 +289,6 @@ var App;
       e = _.collect(finder.find('east'), apply);
       w = _.collect(finder.find('west'), apply);
 
-      /**
-       * if the state changed, broadcast a message to all neighbors
-       */
-      console.log('n');
-      console.log(n);
-      console.log('s');
-      console.log(s);
-      console.log('e');
-      console.log(e);
-      console.log('w');
-      console.log(w);
       return {
         'north': n,
         'east': e,
@@ -366,6 +373,9 @@ var App;
       toggleAlive: function() {
         value = this.isAlive() ? 0 : 1;
       },
+      determineState: function() {
+
+      },
       render: function() {
         $('td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').html((this.isAlive() ? '&#8226' : '&nbsp;'));
       },
@@ -378,6 +388,7 @@ var App;
          * Replace with rules for determining state
          */
         this.toggleAlive();
+
         /**.**/
         this.render();
 
@@ -385,6 +396,8 @@ var App;
         this.broadcast('clicked_in_rank', {"source":this}, 'rank');
         this.broadcast('clicked_in_column', {"source":this}, 'column');
         this.broadcast('clicked_in_row', {"source":this}, 'row');
+
+        //jQuery(document).trigger('cell_state_change', this);
       },
 
       addChannel: function(channel) {
@@ -481,39 +494,23 @@ var App;
   }
 
   var appendEvents = function() {
-    $('#output td').bind('click', function(n) {
-      /**
-       * @todo fire this as a Bacon event, something all cells handle.
-       */
-      $('#output td').removeClass('active');
-      $('#output td').removeClass('row');
-      $('#output td').removeClass('column');
-      $('#output td').removeClass('rank');
-      $('#output td').removeClass('neighbor');
-      /**/
+    $('#output td').bind('click', function() {$(this).trigger('cell_click');});
 
-      var td = $(this);
-      var coords = $.parseJSON(td.attr('data-cell_coordinates'));
-      var cell = App.Collective.getCellByCellCoordinates(coords);
-      cell.activate();
+    $('#output td').asEventStream('cell_click').onValue(function(event) {
+        $('#output td').removeClass('active');
+        $('#output td').removeClass('row');
+        $('#output td').removeClass('column');
+        $('#output td').removeClass('rank');
+        $('#output td').removeClass('neighbor');
+;
+        var td = $(event.target);
+        var coords = $.parseJSON(td.attr('data-cell_coordinates'));
+        var cell = App.Collective.getCellByCellCoordinates(coords);
+        cell.activate();
 
-      // The class "rank" was added by above.
-      td.removeClass('neighbor').removeClass('rank').addClass('active');
-
-//      var t = '';
-//      t += 'classes:     ' + td.attr('class') + '\n';
-//      t += 'data_coords: ' + JSON.stringify(coords) + '\n';
-//
-//      if (cell != null) {
-//        t += 'index:       ' + cell.get('index') + '\n';
-//        t += 'value:       ' + cell.get('value') + '\n';
-//        t += 'alive:       ' + cell.get('alive') + '\n';
-//        t += 'column:      ' + col + '\n';
-//        t += 'row:         ' + row + '\n';
-//        t += 'neighbors:   ' + JSON.stringify(cell.getNeighbors().getUnique(true)) + '\n';
-//      }
-//      $('#details').text(t);
-    });
+        // The class "rank" was added by above.
+        td.removeClass('neighbor').removeClass('rank').addClass('active');
+      });
   }
 
   var populateTable = function() {
