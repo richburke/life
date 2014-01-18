@@ -1,6 +1,8 @@
 /**
  * Created by dev on 1/1/14.
  *
+ * Create a master queue.  Use setInterval to pull items from queue.
+ *
  * Research bacon js
  *
  * _Here's the problem: I can't just fire events from the cell itself, because
@@ -10,6 +12,10 @@
  * _A cool thing would be able to mimic parallelism.  Not sure if that's possible
  *  because at some level there is always one thing that needs to fire a timer,
  *  and then for only one thing at a time.
+ *
+ * Remove bacon.  Add EventEmitter.  <strike>Have each Cell descend from EventEmitter.</strike>
+ * Have the Collective descend from Event Emitter.
+ *   neighbor-state-change
  *
  * Be able to run "life."
  * Use 'use strict'.
@@ -120,7 +126,10 @@ var App;
           cells.push(new Cell(data[i], i));
         }
 
+        var cell_stream;
         _.each(this.get('cells'), function(cell) {
+          cell.initialize();
+
           _.each(cell.findNeighbors().getUnique(), function(v) {
             if (_.contains(v.relationships, 'neighbor')) {
               cell.addListener(v.cell, 'neighbor');
@@ -341,6 +350,15 @@ var App;
     var handlers = {};
 
     return {
+      initialize: function() {
+        var self = this;
+        jQuery(this).asEventStream('cell_change')
+          .onValue(function(event) {
+            _.each(event.target.getNeighbors().getUnique(), function(neighbor) {
+              neighbor.cell.activate();
+            });
+          });
+      },
       draw: function() {
         var s = '|'+(value > 0 ? '*' : ' ') +'|';
         return s;
@@ -380,8 +398,8 @@ var App;
         $('td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').html((this.isAlive() ? '&#8226' : '&nbsp;'));
       },
       activate: function() {
-        var col = this.get('column');
-        var row = this.get('row');
+        //var col = this.get('column');
+        //var row = this.get('row');
 
         /**
          * @todo
@@ -392,12 +410,15 @@ var App;
         /**.**/
         this.render();
 
+        /*
         this.broadcast('clicked_neighbor', {"source":this}, 'neighbor');
         this.broadcast('clicked_in_rank', {"source":this}, 'rank');
         this.broadcast('clicked_in_column', {"source":this}, 'column');
         this.broadcast('clicked_in_row', {"source":this}, 'row');
-
+*/
         //jQuery(document).trigger('cell_state_change', this);
+
+        jQuery(this).trigger('cell_change');
       },
 
       addChannel: function(channel) {
@@ -534,4 +555,11 @@ var App;
     console.dir(v);
   })
   jQuery(document).trigger('state_change', 3);
+
+
+//var G = jQuery(App.Collective).asEventStream('cell_change');
+//G.onValue(function(v) {
+//  console.log('woop.  there it is.');
+//});
+//jQuery(App.Collective).trigger('cell_change');
 
