@@ -37,6 +37,11 @@
  * When a new column or row is added, each of its cells should communicate to
  * its neighbors that it's been added.
  */
+
+Function.prototype.inherits = function(parent) {
+  this.prototype = Object.create(parent.prototype);
+};
+
 var App;
 (function($) {
   App = new function() {
@@ -49,6 +54,67 @@ var App;
       return destination;
     }
     return this;
+  };
+
+  /**
+   * SuperSmallTrueEventQueue
+   * @returns {{poll: Function, pluck: Function, each: Function, every: Function, add: Function, start: Function}}
+   * @constructor
+   */
+  EventQueue = function() {
+    var interval;
+    var events = [];
+    var pluckNumber = 1;
+    var everyNumber = 0;
+    var pollMilliseconds = 1000;
+    var eachFnc = function(o, n) {};
+    var everyFnc = function(o, currentCount, currentLength) {};
+
+    var execCount = 0;
+    var execFnc = function() {
+      var event;
+      for ( var i=1; i <= pluckNumber; i++) {
+        if (events.length == 0) break;
+        event = events.pop();
+
+        if (everyNumber > 0 && execCount % everyNumber == 0) {
+          everyFnc(event, execCount, events.length+1);
+        }
+        eachFnc(event, ++execCount);
+      }
+    }
+
+    return {
+      poll: function(n) {
+        pollMilliseconds = n;
+        return this;
+      },
+      pluck: function(n) {
+        return this;
+      },
+      unique: function() {
+        // true, compare properties
+        // function, test for unique-ness
+        // false is the default
+      },
+      each: function(fnc) {
+        eachFnc = fnc;
+        return this;
+      },
+      every: function(n, fnc) {
+        everyFnc = fnc;
+        everyNumber = n;
+        return this;
+      },
+      add: function(o) {
+        events.push(o);
+        return this;
+      },
+      start: function() {
+        interval = setInterval(execFnc, pollMilliseconds);
+        return this;
+      }
+    }
   };
 
   /**
@@ -222,7 +288,10 @@ var App;
       getRowCount: function() {
         return Math.ceil(this.getCellCount() / this.getColumnCount());
       },
-      isWrapping: function() { return WRAPS; }
+      isWrapping: function() { return WRAPS; },
+      broadcast: function(evnt) {
+        console.log(evnt.msg);
+      }
     };
   }
 
@@ -283,7 +352,7 @@ var App;
 
       var finder = new CellNeighborFinder(cell);
       var apply = function(v) {
-        console.log(v);
+//        console.log(v);
         o = Collective.getCellByCellCoordinates(v.cell_coordinates);
         if (o == null) {
           throw Error('Expected a cell, but got null.');
@@ -334,6 +403,7 @@ var App;
   }
 
   var Cell = function(v, i) {
+    $.extend(this, new EventEmitter());
     var value = v;
     var index = i;
     var col = (function() {
@@ -349,15 +419,8 @@ var App;
 
     var handlers = {};
 
-    return {
+    return $.extend(this, {
       initialize: function() {
-        var self = this;
-        jQuery(this).asEventStream('cell_change')
-          .onValue(function(event) {
-            _.each(event.target.getNeighbors().getUnique(), function(neighbor) {
-              neighbor.cell.activate();
-            });
-          });
       },
       draw: function() {
         var s = '|'+(value > 0 ? '*' : ' ') +'|';
@@ -371,6 +434,7 @@ var App;
           case 'alive': return this.isAlive();
           case 'column': return this.getColumn();
           case 'row': return this.getRow();
+          case 'unique_neighbors': return this.getNeighbors(false).getUnique();
           default: return null;
         }
       },
@@ -392,35 +456,51 @@ var App;
         value = this.isAlive() ? 0 : 1;
       },
       determineState: function() {
+        // Count the values of the neighbor cells.
+        // If the count is 3, set to 1
+        // Otherwise, set to 0
 
+        var total = 0;
+        var n = _.map(this.get('unique_neighbors'), function(o) {return o.cell});
+        for (var i=0; i < n.length; i++) {
+          if (n[i].isAlive()) total++;
+        }
+
+        value = total == 3 ? 1 : 0;
+        return value;
       },
       render: function() {
         $('td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').html((this.isAlive() ? '&#8226' : '&nbsp;'));
       },
-      activate: function() {
-        //var col = this.get('column');
-        //var row = this.get('row');
-
-        /**
-         * @todo
-         * Replace with rules for determining state
-         */
+      on: function(event) {
+        switch (event.toLowerCase()) {
+          case 'cell-click':
+            this.handleClick();
+            break;
+          case 'cell-neighbor-state-change':
+            this.handleStateChange();
+            break;
+        }
+      },
+      handleClick: function() {
         this.toggleAlive();
+        this.render();
+      },
+      handleStateChange: function() {
+        var old_state = value;
+        var new_state = this.determineState();
 
         /**.**/
         this.render();
 
-        /*
-        this.broadcast('clicked_neighbor', {"source":this}, 'neighbor');
-        this.broadcast('clicked_in_rank', {"source":this}, 'rank');
-        this.broadcast('clicked_in_column', {"source":this}, 'column');
-        this.broadcast('clicked_in_row', {"source":this}, 'row');
-*/
-        //jQuery(document).trigger('cell_state_change', this);
-
-        jQuery(this).trigger('cell_change');
-      },
-
+        if (old_state != new_state) {
+          var n = _.map(this.get('unique_neighbors'), function(o) {return o.cell});
+          for (var i=0; i < n.length; i++) {
+            App.EventQueue.add({"target":n[i], "event":"cell-neighbor-state-change"});
+          }
+        }
+      }
+/*
       addChannel: function(channel) {
         if(typeof channels[channel] == 'undefined')
           channels[channel] = [];
@@ -477,15 +557,16 @@ var App;
       clear: function(type) {
         handlers[type] = [];
         handlers[type].length = 0;
-      }
-    }
+      }*/
+    });
   }
-  /*
-  App.extend(Cell.prototype, Broadcaster);
-  App.extend(Cell.prototype, BroadcastMessageHandlerManager);
-  */
+
+
+  App.EventQueue = new EventQueue();
   App.Collective = Collective;
 })(jQuery);
+
+
 
   var data = [];
   _(50).times(function(n) {data.push(0)});
@@ -515,9 +596,7 @@ var App;
   }
 
   var appendEvents = function() {
-    $('#output td').bind('click', function() {$(this).trigger('cell_click');});
-
-    $('#output td').asEventStream('cell_click').onValue(function(event) {
+    $('#output td').bind('click', function() {
         $('#output td').removeClass('active');
         $('#output td').removeClass('row');
         $('#output td').removeClass('column');
@@ -527,11 +606,11 @@ var App;
         var td = $(event.target);
         var coords = $.parseJSON(td.attr('data-cell_coordinates'));
         var cell = App.Collective.getCellByCellCoordinates(coords);
-        cell.activate();
+        cell.on('cell-click');
 
         // The class "rank" was added by above.
         td.removeClass('neighbor').removeClass('rank').addClass('active');
-      });
+    });
   }
 
   var populateTable = function() {
@@ -544,22 +623,22 @@ var App;
   appendEvents();
   populateTable();
 
-  var go = $('button').asEventStream('click');
-  go.onValue(function(v) {
-    alert('button clicked!');
-  });
+var fncEach = function(evnt){
+  evnt.target.on(evnt.event);
+}
+var fncEvery = function(evnt, n, total) {
+  console.log('historical index '+n);
+  console.log('items in event queue '+total);
+};
+App.EventQueue.poll(500).each(fncEach).every(10, fncEvery);
 
-  var go1 = jQuery(document).asEventStream('state_change');
-  go1.onValue(function(v) {
-    console.log('got it ' + v);
-    console.dir(v);
-  })
-  jQuery(document).trigger('state_change', 3);
+/*
+var go = $('button').asEventStream('click');
+go.onValue(function(v) {
+  App.EventQueue.start();
+});*/
 
-
-//var G = jQuery(App.Collective).asEventStream('cell_change');
-//G.onValue(function(v) {
-//  console.log('woop.  there it is.');
-//});
-//jQuery(App.Collective).trigger('cell_change');
+$('button').bind('click', function() {
+  App.EventQueue.start();
+});
 
