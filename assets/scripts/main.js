@@ -70,54 +70,62 @@ var App;
    * @constructor
    */
   EventQueue = function() {
-    var interval;
     var events = [];
-    var iterationLimit = null;
+    var interval, pollLimit;
+    var pollCount = 0;
+    var eachCount = 0;
     var pollMilliseconds = 1000;
-    var pluckFnc = function(a, i, n) {return a.shift();};
     var pluckNumber = 1;
     var everyNumber = 0;
-    var eachFnc = function(o, n) {};
-    var everyFnc = function(o, currentCount, currentLength) {};
-    var uniqueFnc = function(o, list) {return true;};
-    var onEndFnc = function(list, currentCount, n) {};
 
-    /**
-     * @todo
-     * For testing only.  Remove.
-     */
-    var addAttempt = 0;
+    var pluckFnc = function(a, i, n) {return a.shift();};
+    var eachFnc = function(o, n) {};
+    var everyFnc = function(o, pollCnt, eachCnt, currentLength) {};
+    var uniqueFnc = function(o, list) {return true;};
+    var pollLimitFnc = function(list, pollCnt, eachCnt, pollLmt) {endFnc();};
+    var onStartFnc = function(list, pollLmt) {};
+    var onEndFnc = function(list, pollCnt, eachCnt, n) {};
 
     // traverse
     //   -- one way
     //   -- back & forth
     //   -- cycle
 
-    var execCount = 0;
+    // Only like other functions, these are not alterable by clients.
+    var endFnc = function(n) {
+      clearInterval(interval);
+      onEndFnc(events, pollCount, eachCount, n);
+    };
     var execFnc = function() {
+      if (events.length == 0) {
+        endFnc();
+        return;
+      }
+
       var event;
-
-     // if (iterat) {
-        for ( var i=1; i <= pluckNumber; i++) {
-          if (events.length == 0) {
-            onEndFnc(events, execCount, i);
-            break;
-          }
-          event = pluckFnc(events, i, execCount);
-
-          if (everyNumber > 0 && execCount % everyNumber == 0) {
-            everyFnc(event, execCount, events.length+1, addAttempt);
-          }
-          eachFnc(event, ++execCount);
-        }
-
+      pollCount++;
+      for ( var i=1; i <= pluckNumber; i++) {
         if (events.length == 0) {
-          onEndFnc(events, execCount, i);
+          endFnc(i);
+          return;
         }
-      //} else {
 
-      //}
-    }
+        eachCount++;
+        event = pluckFnc(events, i, pollCount, eachCount);
+
+        if (everyNumber > 0 && pollCount % everyNumber == 0) {
+          everyFnc(event, pollCount, eachCount, events.length+1);
+        }
+        eachFnc(event, pollCount, eachCount);
+      }
+
+      if (events.length == 0) {
+        endFnc();
+      }
+      if (pollLimit !== undefined && pollCount >= pollLimit) {
+        pollLimitFnc(events, pollCount, eachCount, pollLimit);
+      }
+    };
 
     return {
       poll: function(n) {
@@ -133,14 +141,12 @@ var App;
         uniqueFnc = fnc;
         return this;
       },
-      sometimes: function(n, fnc) {
-        // The parameter n is either a number (1-99) or function.
-        // If 1-99, compare against rand function for ~percent.
-        // Function should return a boolean.
+      limit: function(n, fnc) {
+        pollLimit = n;
+        if (fnc !== undefined) {
+          pollLimitFnc = fnc;
+        }
         return this;
-      },
-      limit: function(n) {
-        iterationLimit = n;
       },
       each: function(fnc) {
         eachFnc = fnc;
@@ -151,14 +157,21 @@ var App;
         everyFnc = fnc;
         return this;
       },
+      sometimes: function(n, fnc) {
+        // The parameter n is either a number (1-99) or function.
+        // If 1-99, compare against rand function for ~percent.
+        // Function should return a boolean.
+        return this;
+      },
       add: function(o) {
-        addAttempt++;
         if (uniqueFnc(o, events)) {
           events.push(o);
         }
         return this;
       },
-      clear: function(o) {
+      clear: function() {
+        events.length = 0;
+        events = [];
         return this;
       },
       start: function() {
@@ -175,12 +188,14 @@ var App;
         return this;
       },
       onStart: function(o) {
-        return this;
-      },
-      onStop: function(o) {
+        onStartFnc = o;
         return this;
       },
       onEnd: function(o) {
+        onEndFnc = o;
+        return this;
+      },
+      onStop: function(o) {
         return this;
       },
       onPause: function(o) {
@@ -448,28 +463,9 @@ var App;
           });
         });
 
-//        _.each(a, function(o) {
-//          console.log('neighbor');
-//          console.dir(o.cell_coordinates);
-//        });
-//        var aUnique = [];
-//        for (var i=0; i < a.length; ++i) {
-//          if (i == 0) {
-//            aUnique.push(a[i]);
-//          } else {
-//            for (var j=0; j < aUnique.length; ++j) {
-//              if (a[i].cell.cell_coordinates == aUnique[j].cell.cell_coordinates) {
-//                break;
-//              }
-//              aUnique.push(a[i]);
-//            }
-//          }
-//        }
-//        a = _.uniq(a, false, function(v1, v2) {
-//          return v1.cell_coordinates != v2.cell_coordinates;
-//        });
-//        return aUnique;
-        a = _.uniq(a);
+        a = _.uniq(a, false, function(item) {
+          return item.cell_coordinates.column+':'+item.cell_coordinates.row;
+        });
         return a;
       }
     };
@@ -576,6 +572,9 @@ var App;
       handleClick: function() {
         this.toggleAlive();
         this.render();
+
+//        console.log('clicked cell');
+//        console.dir(this.getCellCoordinates());
 
         // Randomize results.  This more closely mimics reality because the
         // same entity doesn't complete the job first.
