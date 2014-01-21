@@ -1,7 +1,27 @@
 /**
  * Created by dev on 1/1/14.
  *
- * Create a master queue.  Use setInterval to pull items from queue.
+ * Fix "life" logic.
+ * Use 'use strict'.
+ * Fix "animation" on birth & death of cell.
+ *  - fix close animation
+ *  - default to dark gray
+ *  - animation in 5 steps, first is dark gray, then white of same size
+ * Add unattached functions to Collective or where appropriate.
+ * Be able to add a column, row to table--top, bottom, left, right.
+ * Make layout responsive.
+ * Convert to Canvas.
+ *
+ * [ARCHIVED]
+ * Add in Packet to Cell.
+ * Add in renderers for Packet and Cell.
+ * Remove use of indices as indicators.
+ * Extract Broadcaster, BroadcastReceiver, BroadcastHandlerManager
+ * - mixins with state
+ * - need to create BroadcastReceiver
+ *   - it will have an onBroadcast method that looks to
+ *     the BroadcastHandlerManager
+ *     - or better, combine those two to just BroadcastReceiver
  *
  * Research bacon js
  *
@@ -12,24 +32,6 @@
  * _A cool thing would be able to mimic parallelism.  Not sure if that's possible
  *  because at some level there is always one thing that needs to fire a timer,
  *  and then for only one thing at a time.
- *
- * Remove bacon.  Add EventEmitter.  <strike>Have each Cell descend from EventEmitter.</strike>
- * Have the Collective descend from Event Emitter.
- *   neighbor-state-change
- *
- * Be able to run "life."
- * Use 'use strict'.
- * Add unattached functions to Collective or where appropriate.
- * Add in Packet to Cell.
- * Add in renderers for Packet and Cell.
- * Remove use of indices as indicators.
- * Extract Broadcaster, BroadcastReceiver, BroadcastHandlerManager
- * - mixins with state
- * - need to create BroadcastReceiver
- *   - it will have an onBroadcast method that looks to
- *     the BroadcastHandlerManager
- *     - or better, combine those two to just BroadcastReceiver
- * Be able to add a column, row to table--top, bottom, left, right.
  */
 /**
  * Don't use index arithmetic for determining location; use column & row
@@ -58,30 +60,63 @@ var App;
 
   /**
    * SuperSmallTrueEventQueue
+   * - general-purpose
+   * - easy-to-use
+   *
+   * sample: space invaders animation
+   *   - animate creature
+   *   - animate movement
    * @returns {{poll: Function, pluck: Function, each: Function, every: Function, add: Function, start: Function}}
    * @constructor
    */
   EventQueue = function() {
     var interval;
     var events = [];
+    var iterationLimit = null;
+    var pollMilliseconds = 1000;
+    var pluckFnc = function(a, i, n) {return a.shift();};
     var pluckNumber = 1;
     var everyNumber = 0;
-    var pollMilliseconds = 1000;
     var eachFnc = function(o, n) {};
     var everyFnc = function(o, currentCount, currentLength) {};
+    var uniqueFnc = function(o, list) {return true;};
+    var onEndFnc = function(list, currentCount, n) {};
+
+    /**
+     * @todo
+     * For testing only.  Remove.
+     */
+    var addAttempt = 0;
+
+    // traverse
+    //   -- one way
+    //   -- back & forth
+    //   -- cycle
 
     var execCount = 0;
     var execFnc = function() {
       var event;
-      for ( var i=1; i <= pluckNumber; i++) {
-        if (events.length == 0) break;
-        event = events.pop();
 
-        if (everyNumber > 0 && execCount % everyNumber == 0) {
-          everyFnc(event, execCount, events.length+1);
+     // if (iterat) {
+        for ( var i=1; i <= pluckNumber; i++) {
+          if (events.length == 0) {
+            onEndFnc(events, execCount, i);
+            break;
+          }
+          event = pluckFnc(events, i, execCount);
+
+          if (everyNumber > 0 && execCount % everyNumber == 0) {
+            everyFnc(event, execCount, events.length+1, addAttempt);
+          }
+          eachFnc(event, ++execCount);
         }
-        eachFnc(event, ++execCount);
-      }
+
+        if (events.length == 0) {
+          onEndFnc(events, execCount, i);
+        }
+      //} else {
+
+      //}
     }
 
     return {
@@ -89,29 +124,69 @@ var App;
         pollMilliseconds = n;
         return this;
       },
-      pluck: function(n) {
+      pluck: function(n, fnc) {
+        pluckNumber = n;
+        pluckFnc = fnc;
         return this;
       },
-      unique: function() {
-        // true, compare properties
-        // function, test for unique-ness
-        // false is the default
+      unique: function(fnc) {
+        uniqueFnc = fnc;
+        return this;
+      },
+      sometimes: function(n, fnc) {
+        // The parameter n is either a number (1-99) or function.
+        // If 1-99, compare against rand function for ~percent.
+        // Function should return a boolean.
+        return this;
+      },
+      limit: function(n) {
+        iterationLimit = n;
       },
       each: function(fnc) {
         eachFnc = fnc;
         return this;
       },
       every: function(n, fnc) {
-        everyFnc = fnc;
         everyNumber = n;
+        everyFnc = fnc;
         return this;
       },
       add: function(o) {
-        events.push(o);
+        addAttempt++;
+        if (uniqueFnc(o, events)) {
+          events.push(o);
+        }
+        return this;
+      },
+      clear: function(o) {
         return this;
       },
       start: function() {
         interval = setInterval(execFnc, pollMilliseconds);
+        return this;
+      },
+      stop: function() {
+        return this;
+      },
+      pause: function() {
+        return this;
+      },
+      restart: function(o) {
+        return this;
+      },
+      onStart: function(o) {
+        return this;
+      },
+      onStop: function(o) {
+        return this;
+      },
+      onEnd: function(o) {
+        return this;
+      },
+      onPause: function(o) {
+        return this;
+      },
+      onRestart: function(o) {
         return this;
       }
     }
@@ -183,7 +258,7 @@ var App;
   }
 
   var Collective = new function() {
-    var COLUMN_COUNT = 5;
+    var COLUMN_COUNT = 40;
     var WRAPS = false;  // Is the world round or flat?
     var cells = [];
     return {
@@ -195,30 +270,7 @@ var App;
         var cell_stream;
         _.each(this.get('cells'), function(cell) {
           cell.initialize();
-
-          _.each(cell.findNeighbors().getUnique(), function(v) {
-            if (_.contains(v.relationships, 'neighbor')) {
-              cell.addListener(v.cell, 'neighbor');
-            }
-            if (_.contains(v.relationships, 'rank')) {
-              cell.addListener(v.cell, 'rank');
-            }
-            if (_.contains(v.relationships, 'column')) {
-              cell.addListener(v.cell, 'column');
-            }
-            if (_.contains(v.relationships, 'row')) {
-              cell.addListener(v.cell, 'row');
-            }
-          });
         });
-
-        /*
-        jQuery(document).asEventStream('cell_state_change')
-          .onValue(function(event) {
-            console.log('STATE CHANGE');
-            console.dir(event.target);
-        });
-        */
       },
       getCells: function() {return cells;},
       get: function(p) {
@@ -352,7 +404,6 @@ var App;
 
       var finder = new CellNeighborFinder(cell);
       var apply = function(v) {
-//        console.log(v);
         o = Collective.getCellByCellCoordinates(v.cell_coordinates);
         if (o == null) {
           throw Error('Expected a cell, but got null.');
@@ -389,21 +440,42 @@ var App;
         }
         return boundaries;
       },
-      getUnique: function(sort) {
+      getUnique: function() {
         var a = [];
         _.each(this.types, function(v) {
           _.each(boundaries[v], function(v) {
             a.push(v);
           });
         });
+
+//        _.each(a, function(o) {
+//          console.log('neighbor');
+//          console.dir(o.cell_coordinates);
+//        });
+//        var aUnique = [];
+//        for (var i=0; i < a.length; ++i) {
+//          if (i == 0) {
+//            aUnique.push(a[i]);
+//          } else {
+//            for (var j=0; j < aUnique.length; ++j) {
+//              if (a[i].cell.cell_coordinates == aUnique[j].cell.cell_coordinates) {
+//                break;
+//              }
+//              aUnique.push(a[i]);
+//            }
+//          }
+//        }
+//        a = _.uniq(a, false, function(v1, v2) {
+//          return v1.cell_coordinates != v2.cell_coordinates;
+//        });
+//        return aUnique;
         a = _.uniq(a);
-        return (sort !== undefined && sort) ? a.sort(function(n1, n2) {return n1 - n2;}) : a;
+        return a;
       }
     };
   }
 
   var Cell = function(v, i) {
-    $.extend(this, new EventEmitter());
     var value = v;
     var index = i;
     var col = (function() {
@@ -422,10 +494,6 @@ var App;
     return $.extend(this, {
       initialize: function() {
       },
-      draw: function() {
-        var s = '|'+(value > 0 ? '*' : ' ') +'|';
-        return s;
-      },
       get: function(p) {
         if (p === undefined) return null;
         switch (p.toLowerCase()) {
@@ -434,12 +502,14 @@ var App;
           case 'alive': return this.isAlive();
           case 'column': return this.getColumn();
           case 'row': return this.getRow();
+          case 'cell_coordinates': return this.getCellCoordinates();
           case 'unique_neighbors': return this.getNeighbors(false).getUnique();
           default: return null;
         }
       },
       getColumn: function() {return col;},
       getRow: function() {return row;},
+      getCellCoordinates: function() {return {"column":this.getColumn(), "row":this.getRow()}},
       getNeighbors: function(force) {
         if (neighbors == null || force == true) {
           neighbors = new CellNeighbors(this);
@@ -455,22 +525,43 @@ var App;
       toggleAlive: function() {
         value = this.isAlive() ? 0 : 1;
       },
+      highlight: function() {
+        var elem = $('td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]');
+        elem.addClass('highlight');
+      },
       determineState: function() {
-        // Count the values of the neighbor cells.
-        // If the count is 3, set to 1
-        // Otherwise, set to 0
-
         var total = 0;
-        var n = _.map(this.get('unique_neighbors'), function(o) {return o.cell});
-        for (var i=0; i < n.length; i++) {
-          if (n[i].isAlive()) total++;
-        }
+/*
+        console.dir(this.getCellCoordinates());
 
-        value = total == 3 ? 1 : 0;
+        _.each(this.get('unique_neighbors'), function(o) {
+            console.dir(o.cell_coordinates);
+            console.log(o.cell.isAlive());
+            o.cell.highlight();
+          }
+        );
+
+        console.log('number of neighbors: '+this.get('unique_neighbors').length);
+*/
+        _.each(
+          _.map(this.get('unique_neighbors'), function(o) {return o.cell}),
+            function(cell) {if (cell.isAlive()) total++;}
+        );
+        value = (total == 2 || total == 3) ? 1 : 0;
+        //console.log('total='+total+'; value='+value);
         return value;
       },
       render: function() {
-        $('td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').html((this.isAlive() ? '&#8226' : '&nbsp;'));
+        var elem = $('td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]');
+        /**
+         * @todo move this to another event, for efficiency
+         */
+        elem.removeClass('clicked');
+        /* . */
+
+        elem.removeClass('on');
+        elem.removeClass('off');
+        elem.addClass(this.isAlive()?'on':'off');
       },
       on: function(event) {
         switch (event.toLowerCase()) {
@@ -485,8 +576,17 @@ var App;
       handleClick: function() {
         this.toggleAlive();
         this.render();
+
+        // Randomize results.  This more closely mimics reality because the
+        // same entity doesn't complete the job first.
+        _.each(_.shuffle(
+          _.map(this.get('unique_neighbors'), function(o) {return o.cell})
+          ), function(cell) {
+            App.EventQueue.add({"target":cell, "event":"cell-neighbor-state-change"});
+        });
       },
       handleStateChange: function() {
+//        console.log('-- handle state change --');
         var old_state = value;
         var new_state = this.determineState();
 
@@ -494,83 +594,25 @@ var App;
         this.render();
 
         if (old_state != new_state) {
-          var n = _.map(this.get('unique_neighbors'), function(o) {return o.cell});
-          for (var i=0; i < n.length; i++) {
-            App.EventQueue.add({"target":n[i], "event":"cell-neighbor-state-change"});
-          }
+          // Randomize results.  This more closely mimics reality because the
+          // same entity doesn't complete the job first.
+          _.each(_.shuffle(
+            _.map(this.get('unique_neighbors'), function(o) {return o.cell})
+            ), function(cell) {
+              App.EventQueue.add({"target":cell, "event":"cell-neighbor-state-change"});
+          });
         }
       }
-/*
-      addChannel: function(channel) {
-        if(typeof channels[channel] == 'undefined')
-          channels[channel] = [];
-      },
-      addListener: function(listener, channel) {
-        if(!channels.hasOwnProperty(channel)) {
-          this.addChannel(channel);
-        }
-        channels[channel].push(listener);
-      },
-      broadcast: function(type, msg, channel) {
-        console.log(channel);
-        console.log(channels);
-        channel = (channel == null) ? DEFAULT_CHANNEL : channel;
-        if(!channels.hasOwnProperty(channel))
-          return;
-
-        var len = channels[channel].length;
-        console.log('Send message to this many  '+len);
-        for(var i=0; i < len; i++) {
-          channels[channel][i].onBroadcast(type, msg);
-        }
-      },
-
-      onBroadcast: function(type, msg) {
-        switch(type) {
-          case 'clicked_neighbor':
-            $('#output td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').addClass('neighbor');
-            return;
-          case 'clicked_in_rank':
-            $('#output td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').addClass('rank');
-            return;
-          case 'clicked_in_column':
-            $('#output td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').addClass('column');
-            return;
-          case 'clicked_in_row':
-            $('#output td[data-cell_coordinates="{\"column\":' + this.get('column') + ', \"row\":' + this.get('row') + '}"]').addClass('row');
-            return;
-        }
-      },
-      on: function(type, fnc) {
-        if(!handlers.hasOwnProperty(type)) {
-          handlers[type] = [];
-        }
-        handlers[type].push(fnc);
-      },
-      handle: function(type, msg, receiver) {
-        if(!handlers.hasOwnProperty(type))
-          return;
-        for(var i=0; i < handlers[type].length; i++) {
-          handlers[type][i](type, msg, receiver);
-        }
-      },
-      clear: function(type) {
-        handlers[type] = [];
-        handlers[type].length = 0;
-      }*/
     });
   }
-
 
   App.EventQueue = new EventQueue();
   App.Collective = Collective;
 })(jQuery);
 
-
-
-  var data = [];
-  _(50).times(function(n) {data.push(0)});
-  App.Collective.initialize(data);
+var data = [];
+_(1000).times(function(n) {data.push(0)});
+App.Collective.initialize(data);
 
   var createTable = function() {
     var num_cols = App.Collective.getColumnCount();
@@ -597,19 +639,14 @@ var App;
 
   var appendEvents = function() {
     $('#output td').bind('click', function() {
-        $('#output td').removeClass('active');
-        $('#output td').removeClass('row');
-        $('#output td').removeClass('column');
-        $('#output td').removeClass('rank');
-        $('#output td').removeClass('neighbor');
-;
         var td = $(event.target);
         var coords = $.parseJSON(td.attr('data-cell_coordinates'));
         var cell = App.Collective.getCellByCellCoordinates(coords);
         cell.on('cell-click');
 
-        // The class "rank" was added by above.
-        td.removeClass('neighbor').removeClass('rank').addClass('active');
+        td.removeClass('off');
+        td.removeClass('on');
+        td.removeClass('alive').addClass('clicked').addClass(cell.isAlive()?'on':'off');
     });
   }
 
@@ -626,11 +663,23 @@ var App;
 var fncEach = function(evnt){
   evnt.target.on(evnt.event);
 }
-var fncEvery = function(evnt, n, total) {
-  console.log('historical index '+n);
-  console.log('items in event queue '+total);
+var fncEvery = function(evnt, n, total, addAttempt) {
+  console.log('=== historical index '+n+'; items in event queue '+total+'; add attempt: '+addAttempt+' ===');
 };
-App.EventQueue.poll(500).each(fncEach).every(10, fncEvery);
+var fncUnique = function(evnt, list) {
+  var len = list.length;
+  for (var i=0; i < len; ++i) {
+    if (evnt.target == list[i].target && evnt.event == list[i].event) {
+      return false;
+    }
+  }
+  return true;
+}
+var fncOnEnd = function(list, total, index) {
+  console.log('== POPULATION DIES OFF ==');
+}
+App.EventQueue.poll(50).each(fncEach).every(100, fncEvery).unique(fncUnique).onEnd(fncOnEnd);
+
 
 /*
 var go = $('button').asEventStream('click');
