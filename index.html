@@ -60,65 +60,86 @@
     .on {
       width: 20px;
       height: 20px;
-      background-image: url("assets/images/sprite_circle_white_20x20_4_2-20.png");
+      background-image: url("assets/images/sprite_circle_white_20x20_5_2-20.png");
       background-repeat: no-repeat;
 
-      -webkit-animation: play .4s steps(4) 0 1 normal forwards;
-      -moz-animation: play .4s steps(4) 0 1 normal forwards;
-      -ms-animation: play .4s steps(4) 0 1 normal forwards;
-      -o-animation: play .4s steps(4) 0 1 normal forwards;
-      animation: play .4s steps(4) 0 1 normal forwards;
+      -webkit-animation: playf .4s steps(4) 0 1 normal forwards;
+      -moz-animation: playf .4s steps(4) 0 1 normal forwards;
+      -ms-animation: playf .4s steps(4) 0 1 normal forwards;
+      -o-animation: playf .4s steps(4) 0 1 normal forwards;
+      animation: playf .4s steps(4) 0 1 normal forwards;
     }
     .off {
       width: 20px;
       height: 20px;
-      background-image: url("assets/images/sprite_circle_white_20x20_4_2-20.png");
+      background-image: url("assets/images/sprite_circle_white_20x20_5_2-20_reversed.png");
+      background-repeat: no-repeat;
 
-      -webkit-animation: stop .4s steps(4) 0 1 reverse backwards;
-      -moz-animation: stop .4s steps(4) 0 1 reverse backwards;
-      -ms-animation: stop .4s steps(4) 0 1 reverse backwards;
-      -o-animation: stop .4s steps(4) 0 1 reverse backwards;
-      animation: stop .4s steps(4) 0 1 reverse backwards;
+      -webkit-animation: playb .4s steps(4) 0 1 normal forwards;
+      -moz-animation: playb .4s steps(4) 0 1 normal forwards;
+      -ms-animation: playb .4s steps(4) 0 1 normal forwards;
+      -o-animation: playb .4s steps(4) 0 1 normal forwards;
+      animation: playb .4s steps(4) 0 1 normal forwards;
     }
-    @-webkit-keyframes play {
-      from { background-position: 20px; }
-      to { background-position: -60px; }
+    @-webkit-keyframes playf {
+      from { background-position: 0px; }
+      to { background-position: -80px; }
     }
-    @-moz-keyframes play {
-      from { background-position: 20px; }
-      to { background-position: -60px; }
+    @-moz-keyframes playf {
+      from { background-position: 0px; }
+      to { background-position: -80px; }
     }
-    @-ms-keyframes play {
-      from { background-position: 20px; }
-      to { background-position: -60px; }
+    @-ms-keyframes playf {
+      from { background-position: 0px; }
+      to { background-position: -80px; }
     }
-    @-o-keyframes play {
-      from { background-position: 20px; }
-      to { background-position: -60px; }
+    @-o-keyframes playf {
+      from { background-position: 0px; }
+      to { background-position: -80px; }
     }
-    @keyframes play {
-      from { background-position: 20px; }
-      to { background-position: -60px; }
+    @keyframes playf {
+      from { background-position: 0px; }
+      to { background-position: -80px; }
+    }
+    @-webkit-keyframes playb {
+        from { background-position: 0px; }
+        to { background-position: -80px; }
+    }
+    @-moz-keyframes playb {
+        from { background-position: 0px; }
+        to { background-position: -80px; }
+    }
+    @-ms-keyframes playb {
+        from { background-position: 0px; }
+        to { background-position: -80px; }
+    }
+    @-o-keyframes playb {
+        from { background-position: 0px; }
+        to { background-position: -80px; }
+    }
+    @keyframes playb {
+        from { background-position: 0px; }
+        to { background-position: -80px; }
     }
     @-webkit-keyframes stop {
-      from { background-position: -60px; }
-      to { background-position: 20px; }
+      from { background-position: -80px; }
+      to { background-position: 0px; }
     }
     @-moz-keyframes stop {
-      from { background-position: -60px; }
-      to { background-position: 20px; }
+      from { background-position: -80px; }
+      to { background-position: 0px; }
     }
     @-ms-keyframes stop {
-      from { background-position: -60px; }
-      to { background-position: 20px; }
+      from { background-position: -80px; }
+      to { background-position: 0px; }
     }
     @-o-keyframes stop {
-      from { background-position: -60px; }
-      to { background-position: 20px; }
+      from { background-position: -80px; }
+      to { background-position: 0px; }
     }
     @keyframes stop {
-      from { background-position: -60px; }
-      to { background-position: 20px; }
+      from { background-position: -80px; }
+      to { background-position: 0px; }
     }
   </style>
 </head>
@@ -132,8 +153,6 @@
 * link up with bacon.js
 
 * create canvas, per processing.js
-
-
 * increase canvas dynamically
 * draw a grid
 * zoom out on grid
